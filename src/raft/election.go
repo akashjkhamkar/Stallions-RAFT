@@ -38,22 +38,24 @@ func (rf *Raft) is_log_upto_date(candidate_last_entry_index, candidate_last_entr
 	return false
 }
 
-func (rf *Raft) RequestVoteHandler(args *RequestVoteArgs, reply *RequestVoteReply) {
+func (s *server) RequestVoteHandler(ctx context.Context, args *pb.RequestVoteArgs) (*pb.RequestVoteReply, error) {
+	rf := Raft_instance
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 
-	reply.Term = rf.term
+	reply := &pb.RequestVoteReply{}
+	reply.Term = int32(rf.term)
 
-	is_log_upto_date := rf.is_log_upto_date(args.LastLogIndex, args.LastLogTerm)
+	is_log_upto_date := rf.is_log_upto_date(int(args.Lastlogindex), int(args.Lastlogterm))
 
-	if args.Term < rf.term {
+	if int(args.Term) < rf.term {
 		rf.Debug(dTicker, "No vote for S%d because old term (%d).", args.Server, args.Term)
 		reply.Vote = false
-		return
+		return reply, nil
 	}
 	
-	if args.Term > rf.term{
-		rf.term = args.Term
+	if int(args.Term) > rf.term{
+		rf.term = int(args.Term)
 		rf.become_follower()
 
 		if is_log_upto_date {
@@ -62,18 +64,19 @@ func (rf *Raft) RequestVoteHandler(args *RequestVoteArgs, reply *RequestVoteRepl
 		}
 	}
 
-	if (rf.voted == -1 || rf.voted == args.Server) && is_log_upto_date {
+	if (rf.voted == -1 || int32(rf.voted) == args.Server) && is_log_upto_date {
 		// Grant the vote and convert to follower
 		rf.Debug(dTicker, "Voted to S%d", args.Server)
-		rf.voted = args.Server
-		reply.Term = rf.term
+		rf.voted = int(args.Server)
+		reply.Term = int32(rf.term)
 		reply.Vote = true
 		rf.reset_election_timeout()
-		return
+		return reply, nil
 	}
 
 	rf.Debug(dTicker, "No vote for S%d beacause already voted S%d", args.Server, rf.voted)
 	reply.Vote = false
+	return reply, nil
 }
 
 func (rf *Raft) sendRequestVote(server int, args RequestVoteArgs, reply *RequestVoteReply) bool {

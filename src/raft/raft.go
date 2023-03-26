@@ -67,6 +67,7 @@ type Raft struct {
 	mu        sync.Mutex          // Lock to protect shared access to this peer's state
 	peer_ids     [] string // RPC end points of all peers
 	peers     [] pb.RaftRpcClient // RPC end points of all peers
+	raft_rpc_server *server
 	majority int
 	persister *Persister          // Object to hold this peer's persisted state
 	me        int                 // this peer's index into peers[]
@@ -291,6 +292,8 @@ type server struct {
 	pb.UnimplementedRaftRpcServer
 }
 
+var Raft_instance *Raft;
+
 func Make(peers [] string, me int, applyCh chan ApplyMsg, port int) *Raft {
 	rf := &Raft{}
 	rf.majority = len(peers)/2 + 1
@@ -312,9 +315,9 @@ func Make(peers [] string, me int, applyCh chan ApplyMsg, port int) *Raft {
 	}
 
 	grpc_server := grpc.NewServer()
-	raft_rpc_server := &server{}
+	rf.raft_rpc_server = &server{}
 
-	pb.RegisterRaftRpcServer(grpc_server, raft_rpc_server)
+	pb.RegisterRaftRpcServer(grpc_server, rf.raft_rpc_server)
 
 	rf.Debug(dInit, "server listening at %v", lis.Addr())
 
@@ -324,5 +327,7 @@ func Make(peers [] string, me int, applyCh chan ApplyMsg, port int) *Raft {
 
 	// Starting the ticker
 	go rf.ticker()
+
+	Raft_instance = rf
 	return rf
 }
