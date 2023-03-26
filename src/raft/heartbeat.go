@@ -1,7 +1,9 @@
 package raft
 
 import (
+	"context"
 	"sort"
+	pb "stallionraft/raftrpc"
 	"time"
 )
 
@@ -10,7 +12,7 @@ type HeartBeatArgs struct {
 	Id int
 	PrevLogIndex int
 	PrevLogTerm int
-	Entries [] LogEntry
+	Entries [] * pb.LogEntry
 	LeaderCommit int
 }
 
@@ -26,7 +28,7 @@ func (rf *Raft) set_commit_index(LeaderCommit int) {
 	}
 }
 
-func (rf *Raft) add_entries(entries [] LogEntry, index int) {
+func (rf *Raft) add_entries(entries [] * pb.LogEntry, index int) {
 	expected_length := index - 1 + len(entries)
 	
 	if expected_length < len(rf.log) {
@@ -34,7 +36,7 @@ func (rf *Raft) add_entries(entries [] LogEntry, index int) {
 		top := rf.log[index - 1 + len(entries):]
 		bottom := rf.log[:index - 1]
 
-		var final [] LogEntry
+		var final [] * pb.LogEntry
 		final = append(final, bottom...)
 		final = append(final, entries...)
 		final = append(final, top...)
@@ -71,7 +73,7 @@ func (rf *Raft) ConsistencyCheck(PrevLogIndex, PrevLogTerm int) bool {
 
 	entry := rf.log[PrevLogIndex - 1]
 
-	if entry.Term != PrevLogTerm {
+	if int(entry.Term) != PrevLogTerm {
 		// deleting all successesive entries
 		rf.log = rf.log[:PrevLogIndex - 1]
 		return false
@@ -109,8 +111,29 @@ func (rf *Raft) HeartbeatHandler(args *HeartBeatArgs, reply *HeartBeatReply) {
 }
 
 func (rf *Raft) sendRequestBeat(server int, args *HeartBeatArgs, reply *HeartBeatReply) bool {
-	ok := rf.peers[server].Call("Raft.HeartbeatHandler", args, reply)
-	return ok
+	rpc_req_data := pb.HeartBeatArgs{
+		Term: int32(args.Term),
+		Id: int32(args.Id),
+		Prevlogindex: int32(args.PrevLogIndex),
+		Prevlogterm: int32(args.PrevLogTerm),
+		Entries: args.Entries,
+		Leadercommit: int32(args.LeaderCommit),
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	res, err := rf.peers[server].HeartbeatHandler(ctx, &rpc_req_data)
+	if err != nil {
+		rf.Debug(dHeartbeat, "could not send heartbeat: %v", err)
+		return false
+	}
+
+	reply.JumpIndex = int(res.Jumpindex)
+	reply.Success = res.Success
+	reply.Term = int(res.Term)
+
+	return true
 }
 
 func (rf *Raft) send_beat(term int, server int) {
@@ -120,10 +143,10 @@ func (rf *Raft) send_beat(term int, server int) {
 	PrevLogTerm := 0
 	
 	if PrevLogIndex != 0 {
-		PrevLogTerm = rf.log[PrevLogIndex - 1].Term
+		PrevLogTerm = int(rf.log[PrevLogIndex - 1].Term)
 	}
 
-	var Entries [] LogEntry
+	var Entries [] * pb.LogEntry
 
 	if len(rf.log) != 0 {
 		Entries = rf.log[PrevLogIndex :]
@@ -186,7 +209,7 @@ func (rf *Raft) commiter() {
 		return
 	}
 
-	if rf.log[new_index - 1].Term == rf.term {
+	if rf.log[new_index - 1].Term == int32(rf.term) {
 		rf.commitIndex = new_index
 	}
 

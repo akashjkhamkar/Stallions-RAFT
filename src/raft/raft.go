@@ -93,7 +93,7 @@ type Raft struct {
 	nextIndex[] int
 	matchIndex[] int
 
-	log[] LogEntry
+	log[] * pb.LogEntry
 	apply_channel chan ApplyMsg
 }
 
@@ -179,7 +179,7 @@ func (rf *Raft) Snapshot(index int, snapshot []byte) {
 // term. the third return value is true if this server believes it is
 // the leader.
 //
-func (rf *Raft) Start(command interface{}) (int, int, bool) {
+func (rf *Raft) Start(command string) (int, int, bool) {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 
@@ -189,9 +189,9 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 
 	if isLeader {
 		// append the entry
-		entry := LogEntry{
+		entry := &pb.LogEntry{
 			Command: command,
-			Term: term,
+			Term: int32(term),
 		}
 		
 		rf.log = append(rf.log, entry)

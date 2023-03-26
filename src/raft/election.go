@@ -27,9 +27,9 @@ func (rf *Raft) is_log_upto_date(candidate_last_entry_index, candidate_last_entr
 
 	current_last_entry := rf.log[last_index - 1]
 	
-	if current_last_entry.Term > candidate_last_entry_term {
+	if int(current_last_entry.Term) > candidate_last_entry_term {
 		return false
-	} else if current_last_entry.Term < candidate_last_entry_term {
+	} else if int(current_last_entry.Term) < candidate_last_entry_term {
 		return true
 	} else if candidate_last_entry_index >= last_index {
 		return true
@@ -90,17 +90,16 @@ func (rf *Raft) sendRequestVote(server int, args RequestVoteArgs, reply *Request
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	r, err := rf.peers[server].RequestVoteHandler(ctx, &rpc_req_data)
-	ok := true
+	res, err := rf.peers[server].RequestVoteHandler(ctx, &rpc_req_data)
 	if err != nil {
-		rf.Debug(dElection, "could not greet: %v", err)
-		ok = false
+		rf.Debug(dElection, "could not send vote req: %v", err)
+		return false
 	}
 
-	reply.Term = int(r.Term)
-	reply.Vote = r.Vote
+	reply.Term = int(res.Term)
+	reply.Vote = res.Vote
 	
-	return ok
+	return true
 }
 
 func (rf *Raft) request_vote(term int, server int, vote_result chan RequestVoteReply) {
@@ -108,7 +107,7 @@ func (rf *Raft) request_vote(term int, server int, vote_result chan RequestVoteR
 	LastTerm := 0
 	
 	if LastIndex != 0 {
-		LastTerm = rf.log[LastIndex - 1].Term
+		LastTerm = int(rf.log[LastIndex - 1].Term)
 	}
 
 	args := RequestVoteArgs{
