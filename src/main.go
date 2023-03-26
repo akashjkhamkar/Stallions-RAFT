@@ -10,14 +10,12 @@ var (
 	serverid = flag.Int("id", 0, "The server id")
 )
 
-var raft_instance *raft.Raft;
-
 func main() {
 	flag.Parse()
 
-	peer_ids := []string{"a", "b", "c", "d"}
+	peer_ids := []string{"localhost:50051", "localhost:50052"}
 	applyMsg := make(chan raft.ApplyMsg)
-	raft_instance = raft.Make(
+	raft.Make(
 		peer_ids,
 		*serverid,
 		applyMsg,
