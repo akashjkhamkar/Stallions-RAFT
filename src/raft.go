@@ -20,11 +20,18 @@ package raft
 import (
 	//	"bytes"
 
+	"flag"
+	"fmt"
+	"net"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"stallionraft/labrpc"
+
+	pb "stallionraft/raftrpc"
+
+	"google.golang.org/grpc"
 )
 
 //
@@ -275,6 +282,14 @@ func (rf *Raft) ticker() {
 // Make() must return quickly, so it should start goroutines
 // for any long-running work.
 //
+var (
+	port = flag.Int("port", 50051, "The server port")
+)
+
+type server struct {
+	pb.UnimplementedRaftRpcServer
+}
+
 func Make(peers []*labrpc.ClientEnd, me int,
 	persister *Persister, applyCh chan ApplyMsg) *Raft {
 	rf := &Raft{}
@@ -294,6 +309,22 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.readPersist(persister.ReadRaftState())
 
 	// start ticker goroutine to start elections
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+	if err != nil {
+		rf.Debug(dInit, "failed to listen")
+	}
+
+	grpc_server := grpc.NewServer()
+	raft_rpc_server := &server{}
+
+	pb.RegisterRaftRpcServer(grpc_server, raft_rpc_server)
+
+	rf.Debug(dInit, "server listening at %v", lis.Addr())
+
+	if err := grpc_server.Serve(lis); err != nil {
+		rf.Debug(dInit, "failed to serve: %v", err)
+	}
+
 	go rf.ticker()
 	return rf
 }

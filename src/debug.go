@@ -15,6 +15,7 @@ const (
 	dHeartbeat logTopic = "BEAT"
 	dMake logTopic = "MAKE"
 	dExecuter logTopic = "EXEC"
+	dInit logTopic = "INIT"
 )
 
 // Retrieve the verbosity level from an environment variable
