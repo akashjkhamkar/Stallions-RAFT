@@ -1,5 +1,11 @@
 package raft
 
+import (
+	"context"
+	pb "stallionraft/raftrpc"
+	"time"
+)
+
 type RequestVoteArgs struct {
 	Term int
 	Server int
@@ -70,8 +76,27 @@ func (rf *Raft) RequestVoteHandler(args *RequestVoteArgs, reply *RequestVoteRepl
 	reply.Vote = false
 }
 
-func (rf *Raft) sendRequestVote(server int, args *RequestVoteArgs, reply *RequestVoteReply) bool {
-	ok := rf.peers[server].Call("Raft.RequestVoteHandler", args, reply)
+func (rf *Raft) sendRequestVote(server int, args RequestVoteArgs, reply *RequestVoteReply) bool {
+	rpc_req_data := pb.RequestVoteArgs{
+		Term: int32(args.Term),
+		Server: int32(args.Server),
+		Lastlogindex: int32(args.LastLogIndex),
+		Lastlogterm: int32(args.LastLogIndex),
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	r, err := rf.peers[server].RequestVoteHandler(ctx, &rpc_req_data)
+	ok := true
+	if err != nil {
+		rf.Debug(dElection, "could not greet: %v", err)
+		ok = false
+	}
+
+	reply.Term = int(r.Term)
+	reply.Vote = r.Vote
+	
 	return ok
 }
 
@@ -83,7 +108,7 @@ func (rf *Raft) request_vote(term int, server int, vote_result chan RequestVoteR
 		LastTerm = rf.log[LastIndex - 1].Term
 	}
 
-	args := &RequestVoteArgs{
+	args := RequestVoteArgs{
 		Term: term,
 		Server: rf.me,
 		LastLogIndex: LastIndex,

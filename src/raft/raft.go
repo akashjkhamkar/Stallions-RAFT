@@ -66,7 +66,7 @@ type LogEntry struct {
 type Raft struct {
 	mu        sync.Mutex          // Lock to protect shared access to this peer's state
 	peer_ids     [] string // RPC end points of all peers
-	peers     []*pb.RaftRpcClient // RPC end points of all peers
+	peers     [] pb.RaftRpcClient // RPC end points of all peers
 	majority int
 	persister *Persister          // Object to hold this peer's persisted state
 	me        int                 // this peer's index into peers[]
@@ -271,8 +271,7 @@ func (rf *Raft) ticker() {
 	}
 }
 
-func (rf *Raft) connect_peers() [] * pb.RaftRpcClient {
-	client_connections := [] * pb.RaftRpcClient{}
+func (rf *Raft) connect_peers() {
 	for i, addr := range rf.peer_ids {
 		if i == rf.me{
 			continue
@@ -284,10 +283,8 @@ func (rf *Raft) connect_peers() [] * pb.RaftRpcClient {
 		}
 
 		raft_rpc_client := pb.NewRaftRpcClient(conn)
-		client_connections = append(client_connections, &raft_rpc_client)
+		rf.peers = append(rf.peers, raft_rpc_client)
 	}
-
-	return client_connections
 }
 
 type server struct {
@@ -299,12 +296,14 @@ func Make(peers [] string, me int, applyCh chan ApplyMsg, port int) *Raft {
 	rf.majority = len(peers)/2 + 1
 	rf.me = me
 	rf.peer_ids = peers
-	rf.peers = rf.connect_peers()
 	rf.voted = -1
 	rf.apply_channel = applyCh
 	rf.random_sleep_time_range = 300
 	rf.base_sleep_time = 300
 	rf.election_timeout = 300
+
+	// connect to of all the peers
+	rf.connect_peers()
 
 	// Starting grpc server setup
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
