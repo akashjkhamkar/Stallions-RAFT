@@ -20,18 +20,16 @@ package raft
 import (
 	//	"bytes"
 
-	"flag"
 	"fmt"
 	"net"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"stallionraft/labrpc"
-
 	pb "stallionraft/raftrpc"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 //
@@ -67,7 +65,8 @@ type LogEntry struct {
 //
 type Raft struct {
 	mu        sync.Mutex          // Lock to protect shared access to this peer's state
-	peers     []*labrpc.ClientEnd // RPC end points of all peers
+	peer_ids     [] string // RPC end points of all peers
+	peers     []*pb.RaftRpcClient // RPC end points of all peers
 	majority int
 	persister *Persister          // Object to hold this peer's persisted state
 	me        int                 // this peer's index into peers[]
@@ -272,29 +271,35 @@ func (rf *Raft) ticker() {
 	}
 }
 
-// the service or tester wants to create a Raft server. the ports
-// of all the Raft servers (including this one) are in peers[]. this
-// server's port is peers[me]. all the servers' peers[] arrays
-// have the same order. persister is a place for this server to
-// save its persistent state, and also initially holds the most
-// recent saved state, if any. applyCh is a channel on which the
-// tester or service expects Raft to send ApplyMsg messages.
-// Make() must return quickly, so it should start goroutines
-// for any long-running work.
-//
-var (
-	port = flag.Int("port", 50051, "The server port")
-)
+func (rf *Raft) connect_peers() [] * pb.RaftRpcClient {
+	client_connections := [] * pb.RaftRpcClient{}
+	for i, addr := range rf.peer_ids {
+		if i == rf.me{
+			continue
+		}
+
+		conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			rf.Debug("did not connect address %s : %v", addr, err)
+		}
+
+		raft_rpc_client := pb.NewRaftRpcClient(conn)
+		client_connections = append(client_connections, &raft_rpc_client)
+	}
+
+	return client_connections
+}
 
 type server struct {
 	pb.UnimplementedRaftRpcServer
 }
 
-func Make(peers []*labrpc.ClientEnd, me int, applyCh chan ApplyMsg) *Raft {
+func Make(peers [] string, me int, applyCh chan ApplyMsg, port int) *Raft {
 	rf := &Raft{}
-	rf.peers = peers
 	rf.majority = len(peers)/2 + 1
 	rf.me = me
+	rf.peer_ids = peers
+	rf.peers = rf.connect_peers()
 	rf.voted = -1
 	rf.apply_channel = applyCh
 	rf.random_sleep_time_range = 300
@@ -302,7 +307,7 @@ func Make(peers []*labrpc.ClientEnd, me int, applyCh chan ApplyMsg) *Raft {
 	rf.election_timeout = 300
 
 	// Starting grpc server setup
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		rf.Debug(dInit, "failed to listen")
 	}
