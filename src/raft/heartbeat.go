@@ -49,15 +49,15 @@ func (rf *Raft) add_entries(entries [] * pb.LogEntry, index int) {
 	rf.log = append(rf.log, entries...)
 }
 
-func (rf *Raft) consistency_jump_index(PrevLogIndex int) int {
-	index := min(PrevLogIndex, len(rf.log)) - 1
+func (rf *Raft) consistency_jump_index(PrevLogIndex int32) int32 {
+	index := min(int(PrevLogIndex), len(rf.log)) - 1
 	for_term := rf.log[index].Term
 
 	for i := index - 1; i >= 0; i-- {
 		term := rf.log[i].Term
 
 		if term != for_term {
-			return i + 2
+			return int32(i + 2)
 		}
 	}
 
@@ -82,32 +82,35 @@ func (rf *Raft) ConsistencyCheck(PrevLogIndex, PrevLogTerm int) bool {
 	return true
 }
 
-func (rf *Raft) HeartbeatHandler(args *HeartBeatArgs, reply *HeartBeatReply) {
+func (s *server) HeartbeatHandler(ctx context.Context, args *pb.HeartBeatArgs) (*pb.HeartBeatReply, error) {
+	rf := Raft_instance
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 
-	reply.Term = rf.term
+	reply := &pb.HeartBeatReply{}
+	reply.Term = int32(rf.term)
 	
 	rf.Debug(dHeartbeat, "Beat - ", args)
-	if args.Term < rf.term {
+	if int(args.Term) < rf.term {
 		reply.Success = false
 		rf.Debug(dHeartbeat, "Rejecting old beat from S%d", args.Id)
-		return
-	} else if !rf.ConsistencyCheck(args.PrevLogIndex, args.PrevLogTerm) {
+		return reply, nil
+	} else if !rf.ConsistencyCheck(int(args.Prevlogindex), int(args.Prevlogterm)) {
 		reply.Success = false
-		reply.JumpIndex = rf.consistency_jump_index(args.PrevLogIndex)
+		reply.Jumpindex = rf.consistency_jump_index(args.Prevlogindex)
 		rf.Debug(dHeartbeat, "Consistency check failed S%d", args.Id)
 	} else {
 		reply.Success = true
-		rf.add_entries(args.Entries, args.PrevLogIndex+1)
-		rf.set_commit_index(args.LeaderCommit)
+		rf.add_entries(args.Entries, int(args.Prevlogindex+1))
+		rf.set_commit_index(int(args.Leadercommit))
 	}
 
 	rf.executer()
-	rf.term = args.Term
+	rf.term = int(args.Term)
 	rf.become_follower()
 	rf.reset_election_timeout()
 	rf.Debug(dHeartbeat, "Accepted beat from S%d", args.Id)
+	return reply, nil
 }
 
 func (rf *Raft) sendRequestBeat(server int, args *HeartBeatArgs, reply *HeartBeatReply) bool {
