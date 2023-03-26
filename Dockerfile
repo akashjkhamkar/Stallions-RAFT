@@ -12,6 +12,6 @@ COPY ./ ./
 
 # RUN go build -o build ./src/main.go
 
-EXPOSE 8080
+EXPOSE 50051
 
 ENTRYPOINT [ "go", "run", "src/main.go" ]
