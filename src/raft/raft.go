@@ -69,7 +69,6 @@ type Raft struct {
 	peers     [] pb.RaftRpcClient // RPC end points of all peers
 	raft_rpc_server *server
 	majority int
-	persister *Persister          // Object to hold this peer's persisted state
 	me        int                 // this peer's index into peers[]
 	dead      int32               // set by Kill()
 
