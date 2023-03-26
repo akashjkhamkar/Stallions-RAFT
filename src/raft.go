@@ -290,25 +290,18 @@ type server struct {
 	pb.UnimplementedRaftRpcServer
 }
 
-func Make(peers []*labrpc.ClientEnd, me int,
-	persister *Persister, applyCh chan ApplyMsg) *Raft {
+func Make(peers []*labrpc.ClientEnd, me int, applyCh chan ApplyMsg) *Raft {
 	rf := &Raft{}
 	rf.peers = peers
 	rf.majority = len(peers)/2 + 1
-	rf.persister = persister
 	rf.me = me
 	rf.voted = -1
 	rf.apply_channel = applyCh
-
-	// Your initialization code here (2A, 2B, 2C).
 	rf.random_sleep_time_range = 300
 	rf.base_sleep_time = 300
-
 	rf.election_timeout = 300
-	// initialize from state persisted before a crash
-	rf.readPersist(persister.ReadRaftState())
 
-	// start ticker goroutine to start elections
+	// Starting grpc server setup
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
 	if err != nil {
 		rf.Debug(dInit, "failed to listen")
@@ -325,6 +318,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 		rf.Debug(dInit, "failed to serve: %v", err)
 	}
 
+	// Starting the ticker
 	go rf.ticker()
 	return rf
 }
