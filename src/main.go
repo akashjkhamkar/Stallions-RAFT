@@ -13,7 +13,7 @@ var (
 func main() {
 	flag.Parse()
 
-	peer_ids := []string{"localhost:50051", "localhost:50052"}
+	peer_ids := []string{"localhost:50051", "localhost:50052", "localhost:50053"}
 	applyMsg := make(chan raft.ApplyMsg)
 	raft.Make(
 		peer_ids,

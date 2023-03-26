@@ -275,6 +275,7 @@ func (rf *Raft) ticker() {
 func (rf *Raft) connect_peers() {
 	for i, addr := range rf.peer_ids {
 		if i == rf.me{
+			rf.peers = append(rf.peers, nil)
 			continue
 		}
 
@@ -293,6 +294,12 @@ type server struct {
 }
 
 var Raft_instance *Raft;
+
+func (rf *Raft) startGrpcServer(grpc_server grpc.Server, listener net.Listener) {
+	if err := grpc_server.Serve(listener); err != nil {
+		rf.Debug(dInit, "failed to serve: %v", err)
+	}
+}
 
 func Make(peers [] string, me int, applyCh chan ApplyMsg, port int) *Raft {
 	rf := &Raft{}
@@ -316,18 +323,19 @@ func Make(peers [] string, me int, applyCh chan ApplyMsg, port int) *Raft {
 
 	grpc_server := grpc.NewServer()
 	rf.raft_rpc_server = &server{}
+	Raft_instance = rf
 
 	pb.RegisterRaftRpcServer(grpc_server, rf.raft_rpc_server)
 
 	rf.Debug(dInit, "server listening at %v", lis.Addr())
 
-	if err := grpc_server.Serve(lis); err != nil {
-		rf.Debug(dInit, "failed to serve: %v", err)
-	}
+	// Listening for grpc calls
+	rf.Debug(dInit, "Starting the grpc server ...")
+	go rf.startGrpcServer(*grpc_server, lis)
 
 	// Starting the ticker
-	go rf.ticker()
+	rf.Debug(dInit, "Starting the ticker ...")
+	rf.ticker()
 
-	Raft_instance = rf
 	return rf
 }
