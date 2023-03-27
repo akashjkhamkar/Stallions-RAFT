@@ -3,6 +3,8 @@ module stallionraft
 go 1.15
 
 require (
+	github.com/caarlos0/env v3.5.0+incompatible
+	github.com/caarlos0/env/v7 v7.1.0 // indirect
 	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/google/go-cmp v0.5.4 // indirect
 	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110 // indirect
