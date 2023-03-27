@@ -10,8 +10,6 @@ ENV VERBOSE=1
 
 COPY ./ ./
 
-# RUN go build -o build ./src/main.go
-
 EXPOSE 50051
 
 ENTRYPOINT [ "go", "run", "src/main.go" ]

@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: stallion-raft-service
+  labels:
+    app: stallion-raft-service
+spec:
+  selector:
+    pod: stallion-raft
+  ports:
+    - protocol: TCP
+      port: 50051
+      targetPort: 50051
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: stallion-raft
+  labels:
+    pod: stallion-raft
+spec:
+  replicas: 3
+  serviceName: stallion-raft-service
+  selector:
+    matchLabels:
+      pod: stallion-raft
+  template:
+    metadata:
+      labels:
+        pod: stallion-raft
+    spec:
+      containers:
+      - name: stallion-raft
+        image: xatriya/stallion-raft:latest
+        imagePullPolicy: "Always"
+        ports:
+        - containerPort: 50051
