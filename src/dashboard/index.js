@@ -42,11 +42,6 @@ if (form) {
 
 
 function update_node_status(data) {
-    if (data['error']) {
-        console.log('error')
-        return
-    }
-
     node_div_id_map = {
         0: 'node0',
         1: 'node1',
@@ -57,6 +52,12 @@ function update_node_status(data) {
     }
     id = data['Id']
     node_name = node_div_id_map[id]
+
+    if (data['error']) {
+        state_div = document.getElementById(node_name + '-' + 'state')
+        state_div.innerHTML = 'Unreachable 🚫'
+        return
+    }
 
     state_div = document.getElementById(node_name + '-' + 'state')
     logsize_div = document.getElementById(node_name + '-' + 'logsize')
@@ -70,7 +71,7 @@ function update_node_status(data) {
 }
 
 function fetch_cluster_state() {
-    cluster_urls.forEach(url => {
+    cluster_urls.forEach((url, i) => {
         fetch(url, {
             method: "GET"
         }).then(
@@ -79,7 +80,7 @@ function fetch_cluster_state() {
             (res) => update_node_status(res)
         ).catch(
             (e) => {
-                update_node_status({'error': true})
+                update_node_status({'error': true, 'Id': i})
             }
         )
     })
