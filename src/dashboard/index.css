@@ -1,0 +1,19 @@
+body {
+    color: rgb(36, 36, 36)
+}
+
+#container {
+    display: flex;
+    padding: 10px;
+    justify-content: space-around;
+}
+
+.node {
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    justify-content: space-around;
+    border: 1px black solid;
+    width: 25%;
+    background-color: rgb(255, 255, 255);
+}
