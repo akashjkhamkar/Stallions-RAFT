@@ -49,8 +49,8 @@ func StartKVserver() {
 
 	router := mux.NewRouter().StrictSlash(true)
 
-	router.HandleFunc("/get-value", getValueHandler).Methods("POST")
-	router.HandleFunc("/upsert-value", upsertValueHandler).Methods("POST")
+	router.HandleFunc("/get-value/", getValueHandler).Methods("POST")
+	router.HandleFunc("/upsert-value/", upsertValueHandler).Methods("POST")
 
 	// need to start another go-routine to track the applychannel
 	// add KVserver struct <- which will hold rf instance
