@@ -61,5 +61,6 @@ func main() {
 	kvserver.StartKVserver(
 		rf,
 		applyMsg,
+		*serverid,
 	)
 }

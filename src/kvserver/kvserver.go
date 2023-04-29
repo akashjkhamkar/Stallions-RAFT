@@ -26,30 +26,43 @@ type KVStore struct {
 	store_mu sync.Mutex
 }
 
-func (kv *KVStore) getValueHandler(w http.ResponseWriter, r *http.Request) {
-
-	reqBody, _ := ioutil.ReadAll(r.Body)
-
+func (kv *KVStore) getValueHandler(res http.ResponseWriter, req *http.Request) {
+	reqBody, _ := ioutil.ReadAll(req.Body)
 	var command Command
 	json.Unmarshal(reqBody, &command)
-
-	// fetch data from in-memory map for key command.key and return val
-	json.NewEncoder(w).Encode(command)
-
+	json.NewEncoder(res).Encode(kv.store[command.Key])
 }
 
-func (kv *KVStore) upsertValueHandler(w http.ResponseWriter, r *http.Request) {
-
-	reqBody, _ := ioutil.ReadAll(r.Body)
-
-	command := string(reqBody)
-
-	// why string ? to call rf.Start() with command
-	json.NewEncoder(w).Encode(command)
-
+func (kv *KVStore) upsertValueHandler(res http.ResponseWriter, req *http.Request) {
+	reqBody, _ := ioutil.ReadAll(req.Body)
+	json_string_command := string(reqBody)
+	kv.rf.Start(json_string_command)
+	json.NewEncoder(res).Encode("OK!")
 }
 
-func StartKVserver(rf *raft.Raft, applyMsg chan raft.ApplyMsg) {
+func (kv *KVStore) getAllValueHandler(res http.ResponseWriter, req *http.Request) {
+	json.NewEncoder(res).Encode(kv.store)
+}
+
+func (kv *KVStore) apply_channel_listener() {
+	for {
+		select{
+			case msg := <- kv.applyMsg:
+				kv.store_mu.Lock()
+
+				data := msg.Command
+				jsonstr, _ := data.(string)
+				var cmd Command
+				json.Unmarshal([]byte(jsonstr), &cmd)
+				kv.store[cmd.Key] = cmd.Value
+
+				kv.store_mu.Unlock()
+				fmt.Print("stored", cmd)
+		}
+	}
+}
+
+func StartKVserver(rf *raft.Raft, applyMsg chan raft.ApplyMsg, id int) {
 	// Initialize kv
 	kv := &KVStore{}
 	kv.rf = rf
@@ -58,10 +71,14 @@ func StartKVserver(rf *raft.Raft, applyMsg chan raft.ApplyMsg) {
 
 	// Initialize routes
 	router := mux.NewRouter().StrictSlash(true)
-	router.HandleFunc("/get-value/", kv.getValueHandler).Methods("POST")
-	router.HandleFunc("/upsert-value/", kv.upsertValueHandler).Methods("POST")
+	router.HandleFunc("/get/", kv.getValueHandler).Methods("POST")
+	router.HandleFunc("/upsert/", kv.upsertValueHandler).Methods("POST")
+	router.HandleFunc("/all/", kv.getAllValueHandler).Methods("GET")
 
-	err := http.ListenAndServe(":8000", router)
+	port := 8000 + id
+	go kv.apply_channel_listener() 
+
+	err := http.ListenAndServe(fmt.Sprintf(":%d", port), router)
 
 	if errors.Is(err, http.ErrServerClosed) {
 		fmt.Printf("server closed\n")

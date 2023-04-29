@@ -182,6 +182,7 @@ func (rf *Raft) Start(command string) (int, int, bool) {
 
 		rf.log = append(rf.log, entry)
 		rf.Debug(dMake, "Adding entry : ", command)
+		fmt.Println(dMake, "Adding entry : ", command)
 	}
 
 	return index, term, isLeader
@@ -217,6 +218,7 @@ func (rf *Raft) executer() {
 			CommandIndex: index,
 		}
 
+		fmt.Println(dExecuter, "Executing cmd : ", rf.log[index-1])
 		rf.Debug(dExecuter, "Executing cmd : ", rf.log[index-1])
 		rf.apply_channel <- msg
 		index++
