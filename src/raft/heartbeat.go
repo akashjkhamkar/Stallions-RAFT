@@ -50,14 +50,9 @@ func (rf *Raft) add_entries(entries [] * pb.LogEntry, index int) {
 }
 
 func (rf *Raft) consistency_jump_index(PrevLogIndex int32) int32 {
-	if len(rf.log) == 0 {
-		return 1
-	}
-
 	index := min(int(PrevLogIndex), len(rf.log)) - 1
-	for_term := rf.log[index].Term
-
 	for i := index - 1; i >= 0; i-- {
+		for_term := rf.log[index].Term
 		term := rf.log[i].Term
 
 		if term != for_term {

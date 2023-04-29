@@ -35,6 +35,7 @@ func (kv *KVStore) getValueHandler(res http.ResponseWriter, req *http.Request) {
 	reqBody, _ := ioutil.ReadAll(req.Body)
 	var command Command
 	json.Unmarshal(reqBody, &command)
+	res.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(res).Encode(kv.store[command.Key])
 }
 
@@ -42,10 +43,12 @@ func (kv *KVStore) upsertValueHandler(res http.ResponseWriter, req *http.Request
 	reqBody, _ := ioutil.ReadAll(req.Body)
 	json_string_command := string(reqBody)
 	kv.rf.Start(json_string_command)
+	res.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(res).Encode("OK!")
 }
 
 func (kv *KVStore) getAllValueHandler(res http.ResponseWriter, req *http.Request) {
+	res.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(res).Encode(kv.store)
 }
 
@@ -57,12 +60,13 @@ func (kv *KVStore) getMetadata(res http.ResponseWriter, req *http.Request) {
 		IsLeader: isLeader,
 	}
 
+	res.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(res).Encode(resp)
+
 	if err != nil {
 		http.Error(res, err.Error(), 500)
 		return
 	}
-
 }
 
 func (kv *KVStore) apply_channel_listener() {

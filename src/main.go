@@ -44,9 +44,9 @@ func main() {
 
 	// TODO: Clean switching between local and k8s envs
 	peer_ids := []string{
+		"localhost:50050",
 		"localhost:50051",
 		"localhost:50052",
-		"localhost:50053",
 	}
 
 	applyMsg := make(chan raft.ApplyMsg)
