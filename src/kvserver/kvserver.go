@@ -19,9 +19,14 @@ type Command struct {
 	Value     string `json:"value"`
 }
 
+type MetaData struct {
+	IsLeader bool
+	Term     int
+}
+
 type KVStore struct {
-	rf *raft.Raft
-	store map[string]string
+	rf       *raft.Raft
+	store    map[string]string
 	applyMsg chan raft.ApplyMsg
 	store_mu sync.Mutex
 }
@@ -44,20 +49,36 @@ func (kv *KVStore) getAllValueHandler(res http.ResponseWriter, req *http.Request
 	json.NewEncoder(res).Encode(kv.store)
 }
 
+func (kv *KVStore) getMetadata(res http.ResponseWriter, req *http.Request) {
+	term, isLeader := kv.rf.GetState()
+
+	resp := MetaData{
+		Term:     term,
+		IsLeader: isLeader,
+	}
+
+	err := json.NewEncoder(res).Encode(resp)
+	if err != nil {
+		http.Error(res, err.Error(), 500)
+		return
+	}
+
+}
+
 func (kv *KVStore) apply_channel_listener() {
 	for {
-		select{
-			case msg := <- kv.applyMsg:
-				kv.store_mu.Lock()
+		select {
+		case msg := <-kv.applyMsg:
+			kv.store_mu.Lock()
 
-				data := msg.Command
-				jsonstr, _ := data.(string)
-				var cmd Command
-				json.Unmarshal([]byte(jsonstr), &cmd)
-				kv.store[cmd.Key] = cmd.Value
+			data := msg.Command
+			jsonstr, _ := data.(string)
+			var cmd Command
+			json.Unmarshal([]byte(jsonstr), &cmd)
+			kv.store[cmd.Key] = cmd.Value
 
-				kv.store_mu.Unlock()
-				fmt.Print("stored", cmd)
+			kv.store_mu.Unlock()
+			fmt.Print("stored", cmd)
 		}
 	}
 }
@@ -74,9 +95,10 @@ func StartKVserver(rf *raft.Raft, applyMsg chan raft.ApplyMsg, id int) {
 	router.HandleFunc("/get/", kv.getValueHandler).Methods("POST")
 	router.HandleFunc("/upsert/", kv.upsertValueHandler).Methods("POST")
 	router.HandleFunc("/all/", kv.getAllValueHandler).Methods("GET")
+	router.HandleFunc("/metadata/", kv.getMetadata).Methods("GET")
 
 	port := 8000 + id
-	go kv.apply_channel_listener() 
+	go kv.apply_channel_listener()
 
 	err := http.ListenAndServe(fmt.Sprintf(":%d", port), router)
 
