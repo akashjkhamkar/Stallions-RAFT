@@ -319,7 +319,7 @@ func Make(peers []string, me int, applyCh chan ApplyMsg, port int) *Raft {
 
 	// Starting the ticker
 	rf.Debug(dInit, "Starting the ticker ...")
-	rf.ticker()
+	go rf.ticker()
 
 	return rf
 }

@@ -50,13 +50,16 @@ func main() {
 	}
 
 	applyMsg := make(chan raft.ApplyMsg)
-	raft.Make(
+	rf := raft.Make(
 		peer_ids,
 		*serverid,
 		applyMsg,
 		*port,
 	)
-	// attach raft instance to kvserver and start server
-	kvserver.StartKVserver()
 
+	// Attach raft instance to kvserver and start server
+	kvserver.StartKVserver(
+		rf,
+		applyMsg,
+	)
 }

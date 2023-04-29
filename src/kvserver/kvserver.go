@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"stallionraft/src/raft"
+	"sync"
 
 	"github.com/gorilla/mux"
 )
@@ -17,7 +19,14 @@ type Command struct {
 	Value     string `json:"value"`
 }
 
-func getValueHandler(w http.ResponseWriter, r *http.Request) {
+type KVStore struct {
+	rf *raft.Raft
+	store map[string]string
+	applyMsg chan raft.ApplyMsg
+	store_mu sync.Mutex
+}
+
+func (kv *KVStore) getValueHandler(w http.ResponseWriter, r *http.Request) {
 
 	reqBody, _ := ioutil.ReadAll(r.Body)
 
@@ -25,37 +34,32 @@ func getValueHandler(w http.ResponseWriter, r *http.Request) {
 	json.Unmarshal(reqBody, &command)
 
 	// fetch data from in-memory map for key command.key and return val
-
 	json.NewEncoder(w).Encode(command)
 
 }
 
-func upsertValueHandler(w http.ResponseWriter, r *http.Request) {
+func (kv *KVStore) upsertValueHandler(w http.ResponseWriter, r *http.Request) {
 
 	reqBody, _ := ioutil.ReadAll(r.Body)
 
 	command := string(reqBody)
 
 	// why string ? to call rf.Start() with command
-
 	json.NewEncoder(w).Encode(command)
 
 }
 
-func StartKVserver() {
+func StartKVserver(rf *raft.Raft, applyMsg chan raft.ApplyMsg) {
+	// Initialize kv
+	kv := &KVStore{}
+	kv.rf = rf
+	kv.applyMsg = applyMsg
+	kv.store = make(map[string]string)
 
-	// initialize routes
-	fmt.Println("Added")
-
+	// Initialize routes
 	router := mux.NewRouter().StrictSlash(true)
-
-	router.HandleFunc("/get-value/", getValueHandler).Methods("POST")
-	router.HandleFunc("/upsert-value/", upsertValueHandler).Methods("POST")
-
-	// need to start another go-routine to track the applychannel
-	// add KVserver struct <- which will hold rf instance
-
-	fmt.Printf("KVserver up on port 8000")
+	router.HandleFunc("/get-value/", kv.getValueHandler).Methods("POST")
+	router.HandleFunc("/upsert-value/", kv.upsertValueHandler).Methods("POST")
 
 	err := http.ListenAndServe(":8000", router)
 
@@ -64,6 +68,7 @@ func StartKVserver() {
 	} else if err != nil {
 		fmt.Printf("error starting server: %s\n", err)
 		os.Exit(1)
+	} else {
+		fmt.Printf("KVserver up on port 8000")
 	}
-
 }
