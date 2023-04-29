@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"stallionraft/src/kvserver"
 	"stallionraft/src/raft"
 	"strconv"
 
@@ -11,7 +12,7 @@ import (
 )
 
 var (
-	port = flag.Int("port", 50051, "The server port")
+	port     = flag.Int("port", 50051, "The server port")
 	serverid = flag.Int("id", 0, "The server id")
 )
 
@@ -37,7 +38,7 @@ func main() {
 		return
 	}
 
-	pod_id_str := string(pod_name[len(pod_name) - 1])
+	pod_id_str := string(pod_name[len(pod_name)-1])
 	pod_id, _ := strconv.ParseInt(pod_id_str, 0, 64)
 
 	peer_ids := []string{
@@ -53,4 +54,7 @@ func main() {
 		applyMsg,
 		*port,
 	)
+
+	kvserver.StartKVserver()
+
 }
