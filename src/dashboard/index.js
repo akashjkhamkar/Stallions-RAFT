@@ -6,9 +6,28 @@ cluster_urls = [
 
 function update_node_status(data) {
     if (data['error']) {
+        console.log('error')
+        return
     }
 
-    console.log(data)
+    node_div_id_map = {
+        0: 'node0',
+        1: 'node1',
+        2: 'node2'
+    }
+
+    id = data['Id']
+    node_name = node_div_id_map[id]
+
+    state_div = document.getElementById(node_name + '-' + 'state')
+    logsize_div = document.getElementById(node_name + '-' + 'logsize')
+    term_div = document.getElementById(node_name + '-' + 'term')
+    store_div = document.getElementById(node_name + '-' + 'store')
+
+    state_div.innerHTML = 'is leader :- ' + data['IsLeader']
+    logsize_div.innerHTML = 'log size :- ' + data['LogLength']
+    term_div.innerHTML = 'term :- ' + data['Term']
+    store_div.innerHTML = 'store :- ' + data['Store']
 }
 
 function fetch_cluster_state() {
@@ -25,7 +44,6 @@ function fetch_cluster_state() {
             }
         )
     })
-    console.log('*')
 }
 
 // fetch_cluster_state()
