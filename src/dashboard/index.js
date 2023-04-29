@@ -4,6 +4,43 @@ cluster_urls = [
     'http://localhost:8002/metadata/',
 ]
 
+
+servers = [
+    'http://localhost:8000/upsert/',
+    'http://localhost:8001/upsert/',
+    'http://localhost:8002/upsert/',
+]
+
+var currentleader = null
+const form = document.getElementById('key-value-form')
+console.log(form)
+if (form) {
+    form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const formData = new FormData(form);
+    console.log(formData.get('key'))
+
+    if (currentleader != null) {
+        leaderurl = servers[currentleader]
+        console.log(leaderurl)
+        console.log(
+            formData.get('key'),
+            formData.get('value')
+        )
+        const response = await fetch(leaderurl, {
+            method: 'POST',
+            body: JSON.stringify({
+                "key": formData.get('key'),
+                "value": formData.get('value')
+            })
+        });
+        console.log(await response.text());
+        };
+    }
+    )
+}
+
+
 function update_node_status(data) {
     if (data['error']) {
         console.log('error')
@@ -15,7 +52,9 @@ function update_node_status(data) {
         1: 'node1',
         2: 'node2'
     }
-
+    if (data['IsLeader'] === true) {
+        currentleader = data['Id']
+    }
     id = data['Id']
     node_name = node_div_id_map[id]
 
@@ -27,7 +66,7 @@ function update_node_status(data) {
     state_div.innerHTML = 'is leader :- ' + data['IsLeader']
     logsize_div.innerHTML = 'log size :- ' + data['LogLength']
     term_div.innerHTML = 'term :- ' + data['Term']
-    store_div.innerHTML = 'store :- ' + data['Store']
+    store_div.innerHTML = 'store :- ' + JSON.stringify(data['Store'])
 }
 
 function fetch_cluster_state() {
