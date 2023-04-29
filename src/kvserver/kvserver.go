@@ -20,8 +20,11 @@ type Command struct {
 }
 
 type MetaData struct {
-	IsLeader bool
-	Term     int
+	Id        int
+	IsLeader  bool
+	Term      int
+	Store     map[string]string
+	LogLength int
 }
 
 type KVStore struct {
@@ -51,10 +54,14 @@ func (kv *KVStore) getAllValueHandler(res http.ResponseWriter, req *http.Request
 
 func (kv *KVStore) getMetadata(res http.ResponseWriter, req *http.Request) {
 	term, isLeader := kv.rf.GetState()
+	log_len, server_id := kv.rf.GetMetadata()
 
 	resp := MetaData{
-		Term:     term,
-		IsLeader: isLeader,
+		Id:        server_id,
+		Term:      term,
+		IsLeader:  isLeader,
+		LogLength: log_len,
+		Store:     kv.store,
 	}
 
 	err := json.NewEncoder(res).Encode(resp)
