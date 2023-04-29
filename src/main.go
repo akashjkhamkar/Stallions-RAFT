@@ -56,8 +56,7 @@ func main() {
 		applyMsg,
 		*port,
 	)
-
-	// attach raft instance to kvserver
+	// attach raft instance to kvserver and start server
 	kvserver.StartKVserver()
 
 }

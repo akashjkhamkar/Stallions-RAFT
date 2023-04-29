@@ -32,7 +32,6 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-//
 // as each Raft peer becomes aware that successive log entries are
 // committed, the peer should send an ApplyMsg to the service (or
 // tester) on the same server, via the applyCh passed to Make(). set
@@ -42,7 +41,6 @@ import (
 // in part 2D you'll want to send other kinds of messages (e.g.,
 // snapshots) on the applyCh, but set CommandValid to false for these
 // other uses.
-//
 type ApplyMsg struct {
 	CommandValid bool
 	Command      interface{}
@@ -55,44 +53,42 @@ type ApplyMsg struct {
 	SnapshotIndex int
 }
 
-
 type LogEntry struct {
 	Command interface{}
-	Term int
+	Term    int
 }
-//
+
 // A Go object implementing a single Raft peer.
-//
 type Raft struct {
-	mu        sync.Mutex          // Lock to protect shared access to this peer's state
-	peer_ids     [] string // RPC end points of all peers
-	peers     [] pb.RaftRpcClient // RPC end points of all peers
+	mu              sync.Mutex         // Lock to protect shared access to this peer's state
+	peer_ids        []string           // RPC end points of all peers
+	peers           []pb.RaftRpcClient // RPC end points of all peers
 	raft_rpc_server *server
-	majority int
-	me        int                 // this peer's index into peers[]
-	dead      int32               // set by Kill()
+	majority        int
+	me              int   // this peer's index into peers[]
+	dead            int32 // set by Kill()
 
 	// Your data here (2A, 2B, 2C).
 	// Look at the paper's Figure 2 for a description of what
 	// state a Raft server must maintain.
-	election_timeout int
-	last_reset_time int64
+	election_timeout        int
+	last_reset_time         int64
 	random_sleep_time_range int
-	base_sleep_time int
+	base_sleep_time         int
 
 	candidate int32
-	leader int32
+	leader    int32
 
-	term int
+	term  int
 	voted int
 
 	commitIndex int
 	lastApplied int
 
-	nextIndex[] int
-	matchIndex[] int
+	nextIndex  []int
+	matchIndex []int
 
-	log[] * pb.LogEntry
+	log           []*pb.LogEntry
 	apply_channel chan ApplyMsg
 }
 
@@ -105,11 +101,9 @@ func (rf *Raft) GetState() (int, bool) {
 	return rf.term, rf.is_leader()
 }
 
-//
 // save Raft's persistent state to stable storage,
 // where it can later be retrieved after a crash and restart.
 // see paper's Figure 2 for a description of what should be persistent.
-//
 func (rf *Raft) persist() {
 	// Your code here (2C).
 	// Example:
@@ -121,10 +115,7 @@ func (rf *Raft) persist() {
 	// rf.persister.SaveRaftState(data)
 }
 
-
-//
 // restore previously persisted state.
-//
 func (rf *Raft) readPersist(data []byte) {
 	if data == nil || len(data) < 1 { // bootstrap without any state?
 		return
@@ -144,11 +135,8 @@ func (rf *Raft) readPersist(data []byte) {
 	// }
 }
 
-
-//
 // A service wants to switch to snapshot.  Only do so if Raft hasn't
 // have more recent info since it communicate the snapshot on applyCh.
-//
 func (rf *Raft) CondInstallSnapshot(lastIncludedTerm int, lastIncludedIndex int, snapshot []byte) bool {
 
 	// Your code here (2D).
@@ -177,7 +165,6 @@ func (rf *Raft) Snapshot(index int, snapshot []byte) {
 // if it's ever committed. the second return value is the current
 // term. the third return value is true if this server believes it is
 // the leader.
-//
 func (rf *Raft) Start(command string) (int, int, bool) {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
@@ -190,9 +177,9 @@ func (rf *Raft) Start(command string) (int, int, bool) {
 		// append the entry
 		entry := &pb.LogEntry{
 			Command: command,
-			Term: int32(term),
+			Term:    int32(term),
 		}
-		
+
 		rf.log = append(rf.log, entry)
 		rf.Debug(dMake, "Adding entry : ", command)
 	}
@@ -200,7 +187,6 @@ func (rf *Raft) Start(command string) (int, int, bool) {
 	return index, term, isLeader
 }
 
-//
 // the tester doesn't halt goroutines created by Raft after each test,
 // but it does call the Kill() method. your code can use killed() to
 // check whether Kill() has been called. the use of atomic avoids the
@@ -210,7 +196,6 @@ func (rf *Raft) Start(command string) (int, int, bool) {
 // up CPU time, perhaps causing later tests to fail and generating
 // confusing debug output. any goroutine with a long-running loop
 // should call killed() to check whether it should stop.
-//
 func (rf *Raft) Kill() {
 	atomic.StoreInt32(&rf.dead, 1)
 	// Your code here, if desired.
@@ -228,11 +213,11 @@ func (rf *Raft) executer() {
 	for rf.commitIndex >= index {
 		msg := ApplyMsg{
 			CommandValid: true,
-			Command: rf.log[index - 1].Command,
+			Command:      rf.log[index-1].Command,
 			CommandIndex: index,
 		}
 
-		rf.Debug(dExecuter, "Executing cmd : ", rf.log[index - 1])
+		rf.Debug(dExecuter, "Executing cmd : ", rf.log[index-1])
 		rf.apply_channel <- msg
 		index++
 	}
@@ -245,7 +230,7 @@ func (rf *Raft) executer() {
 func (rf *Raft) ticker() {
 	for !rf.killed() {
 		// Sleep atleast for 100ms to avoid excessive locking
-		time.Sleep(100*time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 		rf.random_sleep_2(100)
 
 		rf.mu.Lock()
@@ -273,7 +258,7 @@ func (rf *Raft) ticker() {
 
 func (rf *Raft) connect_peers() {
 	for i, addr := range rf.peer_ids {
-		if i == rf.me{
+		if i == rf.me {
 			rf.peers = append(rf.peers, nil)
 			continue
 		}
@@ -292,7 +277,7 @@ type server struct {
 	pb.UnimplementedRaftRpcServer
 }
 
-var Raft_instance *Raft;
+var Raft_instance *Raft
 
 func (rf *Raft) startGrpcServer(grpc_server grpc.Server, listener net.Listener) {
 	if err := grpc_server.Serve(listener); err != nil {
@@ -300,7 +285,7 @@ func (rf *Raft) startGrpcServer(grpc_server grpc.Server, listener net.Listener) 
 	}
 }
 
-func Make(peers [] string, me int, applyCh chan ApplyMsg, port int) *Raft {
+func Make(peers []string, me int, applyCh chan ApplyMsg, port int) *Raft {
 	rf := &Raft{}
 	rf.majority = len(peers)/2 + 1
 	rf.me = me
